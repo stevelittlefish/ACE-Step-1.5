@@ -1,11 +1,13 @@
 # =============================================================================
-# ACE-Step 1.5 — Personal REST API deployment (NVIDIA CUDA)
+# ACE-Step 1.5 — Personal Web UI + REST API deployment (NVIDIA CUDA)
 # =============================================================================
 #
 # Usage:
 #   sudo mkdir -p /srv/acestep/{checkpoints,cache,huggingface,outputs,training}
+#   sudo mkdir -p /srv/acestep/gradio_outputs
 #   docker compose up --build -d
 #   docker compose logs -f acestep
+#   Open http://localhost:7860 for the Web UI
 #   curl http://localhost:8001/health
 #
 # Persistent data is intentionally kept outside the repository under
@@ -33,11 +35,14 @@ services:
     # ---- Environment ----
     environment:
       NVIDIA_VISIBLE_DEVICES: all
-      ACESTEP_MODE: api
-      ACESTEP_API_HOST: 0.0.0.0
-      ACESTEP_API_PORT: 8001
+      ACESTEP_MODE: gradio
+      GRADIO_SERVER_NAME: 0.0.0.0
+      GRADIO_PORT: 7860
       # Personal LAN API authentication.
       ACESTEP_API_KEY: qwe123
+      # Mount the REST routes into the same Gradio process so the large models
+      # are loaded only once. The Web UI itself intentionally has no login.
+      ACESTEP_EXTRA_ARGS: --enable-api --api-key qwe123
       ACESTEP_DOWNLOAD_SOURCE: ${ACESTEP_DOWNLOAD_SOURCE:-auto}
       # Maximum-quality configuration for a 24 GB RTX 3090.
       ACESTEP_CONFIG_PATH: acestep-v15-xl-sft
@@ -57,8 +62,10 @@ services:
 
     # ---- Ports ----
     ports:
-      # Publish on all host interfaces so other LAN machines can connect.
-      - "0.0.0.0:${API_PORT:-8001}:8001"
+      # Both host ports reach the same Gradio/FastAPI process. Port 7860 is the
+      # UI; port 8001 preserves the existing API address for LAN clients.
+      - "0.0.0.0:${GRADIO_PORT:-7860}:7860"
+      - "0.0.0.0:${API_PORT:-8001}:7860"
 
     # ---- Persistent volumes ----
     volumes:
@@ -75,6 +82,9 @@ services:
         source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/outputs
         target: /app/output
       - type: bind
+        source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/gradio_outputs
+        target: /app/gradio_outputs
+      - type: bind
         source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/training
         target: /app/lokr_output
 
@@ -84,7 +94,7 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8001/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7860/health >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 10m
