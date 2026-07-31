@@ -8,18 +8,20 @@
 # Build:
 #   docker build -t acestep .
 #
-# Run (Gradio UI — default):
-#   docker run --gpus all -it --rm \
-#     -p 7860:7860 \
-#     -v $(pwd)/checkpoints:/app/checkpoints \
-#     -v $(pwd)/gradio_outputs:/app/gradio_outputs \
-#     acestep
-#
-# Run (REST API server):
+# Run (REST API server — default):
 #   docker run --gpus all -it --rm \
 #     -p 8001:8001 \
-#     -v $(pwd)/checkpoints:/app/checkpoints \
-#     -e ACESTEP_MODE=api \
+#     -v /srv/acestep/checkpoints:/app/checkpoints \
+#     -v /srv/acestep/cache:/app/.cache/acestep \
+#     -v /srv/acestep/huggingface:/root/.cache/huggingface \
+#     acestep
+#
+# Run (Gradio UI instead):
+#   docker run --gpus all -it --rm \
+#     -p 7860:7860 \
+#     -v /srv/acestep/checkpoints:/app/checkpoints \
+#     -v /srv/acestep/gradio_outputs:/app/gradio_outputs \
+#     -e ACESTEP_MODE=gradio \
 #     acestep
 #
 # =============================================================================
@@ -71,23 +73,37 @@ COPY . /app/
 RUN uv sync --frozen --no-dev --python python3.11
 
 # ==================== Runtime directories ====================
-RUN mkdir -p /app/checkpoints /app/gradio_outputs /app/output
+RUN mkdir -p \
+        /app/checkpoints \
+        /app/.cache/acestep/tmp \
+        /app/gradio_outputs \
+        /app/output \
+        /app/lokr_output \
+        /root/.cache/huggingface
 
 # ==================== Environment ====================
 # Bind to all interfaces for Docker port-mapping
 ENV GRADIO_SERVER_NAME=0.0.0.0
 ENV ACESTEP_API_HOST=0.0.0.0
 
-# Default startup mode: "gradio" for the web UI, "api" for the REST server
-ENV ACESTEP_MODE=gradio
+# Default startup mode: "api" for the REST server, "gradio" for the web UI
+ENV ACESTEP_MODE=api
 
-# Auto-initialize models on startup
-ENV ACESTEP_INIT_SERVICE=true
+# Auto-initialize API models according to detected GPU capability. Set
+# ACESTEP_NO_INIT=true to defer initialization until the first request.
+ENV ACESTEP_NO_INIT=false
+ENV ACESTEP_INIT_LLM=auto
 
 # Default models
 ENV ACESTEP_CONFIG_PATH=acestep-v15-turbo
-ENV ACESTEP_LM_MODEL_PATH=acestep-5Hz-lm-4B
+ENV ACESTEP_LM_MODEL_PATH=acestep-5Hz-lm-1.7B
 ENV ACESTEP_LLM_BACKEND=pt
+
+# Keep runtime caches below a single mountable application cache directory.
+ENV ACESTEP_TMPDIR=/app/.cache/acestep/tmp
+ENV TRITON_CACHE_DIR=/app/.cache/acestep/triton
+ENV TORCHINDUCTOR_CACHE_DIR=/app/.cache/acestep/torchinductor
+ENV HF_HOME=/root/.cache/huggingface
 
 # Disable tokenizers parallelism warnings
 ENV TOKENIZERS_PARALLELISM=false
@@ -124,7 +140,8 @@ else
 fi
 echo "==========================================="
 
-# Build --init_service flags
+# Build Gradio-only --init_service flags. The API server reads its model
+# initialization settings directly from the environment.
 INIT_ARGS=""
 if [ "${ACESTEP_INIT_SERVICE:-true}" = "true" ]; then
     INIT_ARGS="--init_service true"

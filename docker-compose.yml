@@ -1,16 +1,15 @@
 # =============================================================================
-# ACE-Step 1.5 — Docker Compose (generic CUDA)
+# ACE-Step 1.5 — Personal REST API deployment (NVIDIA CUDA)
 # =============================================================================
 #
 # Usage:
-#   docker compose up              # Start Gradio UI (default)
-#   docker compose up --build      # Build and start
-#   docker compose up -d           # Run in background
-#   docker compose down            # Stop
-#   docker compose logs -f         # View logs
+#   sudo mkdir -p /srv/acestep/{checkpoints,cache,huggingface,outputs,training}
+#   docker compose up --build -d
+#   docker compose logs -f acestep
+#   curl http://localhost:8001/health
 #
-#   # Start REST API server instead:
-#   ACESTEP_MODE=api docker compose up
+# Persistent data is intentionally kept outside the repository under
+# /srv/acestep. Override ACESTEP_DATA_ROOT if a different host path is needed.
 #
 # =============================================================================
 
@@ -19,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/ace-step/ace-step-1.5:latest
+    image: acestep-local:1.5
     container_name: acestep
 
     # ---- GPU access ----
@@ -32,30 +31,52 @@ services:
               capabilities: [gpu]
 
     # ---- Environment ----
-    env_file:
-      - path: .env
-        required: false
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - ACESTEP_MODE=${ACESTEP_MODE:-gradio}
-      - ACESTEP_LLM_BACKEND=${ACESTEP_LLM_BACKEND:-pt}
-      - ACESTEP_INIT_SERVICE=${ACESTEP_INIT_SERVICE:-true}
-      - ACESTEP_CONFIG_PATH=${ACESTEP_CONFIG_PATH:-acestep-v15-turbo}
-      - ACESTEP_LM_MODEL_PATH=${ACESTEP_LM_MODEL_PATH:-acestep-5Hz-lm-4B}
-      - ACESTEP_EXTRA_ARGS=${ACESTEP_EXTRA_ARGS:-}
-      - TOKENIZERS_PARALLELISM=false
+      NVIDIA_VISIBLE_DEVICES: all
+      ACESTEP_MODE: api
+      ACESTEP_API_HOST: 0.0.0.0
+      ACESTEP_API_PORT: 8001
+      # Personal LAN API authentication.
+      ACESTEP_API_KEY: qwe123
+      ACESTEP_DOWNLOAD_SOURCE: ${ACESTEP_DOWNLOAD_SOURCE:-auto}
+      # Maximum-quality configuration for a 24 GB RTX 3090.
+      ACESTEP_CONFIG_PATH: acestep-v15-xl-sft
+      ACESTEP_INIT_LLM: "true"
+      ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-4B
+      ACESTEP_LM_BACKEND: vllm
+      ACESTEP_DEVICE: ${ACESTEP_DEVICE:-auto}
+      ACESTEP_NO_INIT: ${ACESTEP_NO_INIT:-false}
+      ACESTEP_QUEUE_MAXSIZE: ${ACESTEP_QUEUE_MAXSIZE:-20}
+      ACESTEP_QUEUE_WORKERS: "1"
+      ACESTEP_API_WORKERS: "1"
+      ACESTEP_TMPDIR: /app/.cache/acestep/tmp
+      TRITON_CACHE_DIR: /app/.cache/acestep/triton
+      TORCHINDUCTOR_CACHE_DIR: /app/.cache/acestep/torchinductor
+      HF_HOME: /root/.cache/huggingface
+      TOKENIZERS_PARALLELISM: "false"
 
     # ---- Ports ----
     ports:
-      - "${GRADIO_PORT:-7860}:7860"
-      - "${API_PORT:-8001}:8001"
+      # Publish on all host interfaces so other LAN machines can connect.
+      - "0.0.0.0:${API_PORT:-8001}:8001"
 
     # ---- Persistent volumes ----
     volumes:
-      - ./checkpoints:/app/checkpoints
-      - hf_cache:/root/.cache/huggingface
-      - ./gradio_outputs:/app/gradio_outputs
-      - ./output:/app/output
+      - type: bind
+        source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/checkpoints
+        target: /app/checkpoints
+      - type: bind
+        source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/cache
+        target: /app/.cache/acestep
+      - type: bind
+        source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/huggingface
+        target: /root/.cache/huggingface
+      - type: bind
+        source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/outputs
+        target: /app/output
+      - type: bind
+        source: ${ACESTEP_DATA_ROOT:-/srv/acestep}/training
+        target: /app/lokr_output
 
     # ---- Shared memory for PyTorch DataLoader ----
     shm_size: "2gb"
@@ -63,14 +84,8 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: >-
-        curl -sf http://localhost:7860/ > /dev/null 2>&1 ||
-        curl -sf http://localhost:8001/health > /dev/null 2>&1 ||
-        exit 1
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8001/health >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
-      start_period: 300s
-      retries: 3
-
-volumes:
-  hf_cache:
+      start_period: 10m
+      retries: 5

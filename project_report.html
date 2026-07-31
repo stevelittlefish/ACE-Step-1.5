@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ACE-Step 1.5 — Technical and Product Assessment</title>
+  <style>
+    :root {
+      --ink: #18212b;
+      --muted: #607080;
+      --paper: #f5f2eb;
+      --card: #fffdf8;
+      --line: #d9d4c8;
+      --navy: #17324d;
+      --teal: #087e78;
+      --gold: #d8972b;
+      --coral: #d65f4a;
+      --green: #257451;
+      --shadow: 0 16px 40px rgba(24, 33, 43, .08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.65 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: var(--teal); text-underline-offset: 3px; }
+    .hero {
+      color: white;
+      background:
+        radial-gradient(circle at 82% 15%, rgba(216,151,43,.34), transparent 27rem),
+        radial-gradient(circle at 8% 95%, rgba(8,126,120,.38), transparent 33rem),
+        var(--navy);
+      padding: 72px max(24px, calc((100vw - 1180px) / 2)) 64px;
+    }
+    .eyebrow { color: #8ce2d7; font-size: .8rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { max-width: 900px; margin: 10px 0 12px; font-size: clamp(2.5rem, 6vw, 5rem); line-height: 1.02; letter-spacing: -.045em; }
+    .hero .lead { max-width: 800px; color: #d8e4ec; font-size: 1.22rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+    .pill { border: 1px solid rgba(255,255,255,.23); border-radius: 999px; padding: 7px 12px; background: rgba(255,255,255,.07); font-size: .84rem; }
+    .layout { display: grid; grid-template-columns: 240px minmax(0, 900px); gap: 40px; max-width: 1220px; margin: 0 auto; padding: 42px 24px 90px; }
+    nav { position: sticky; top: 24px; align-self: start; }
+    nav strong { display: block; margin-bottom: 10px; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; }
+    nav a { display: block; padding: 6px 0; color: var(--muted); text-decoration: none; font-size: .9rem; }
+    nav a:hover { color: var(--teal); }
+    main { min-width: 0; }
+    section { scroll-margin-top: 24px; margin: 0 0 58px; }
+    h2 { margin: 0 0 18px; color: var(--navy); font-size: clamp(1.8rem, 3vw, 2.55rem); line-height: 1.15; letter-spacing: -.025em; }
+    h3 { margin: 26px 0 10px; color: var(--navy); font-size: 1.25rem; }
+    h4 { margin: 20px 0 6px; }
+    p { margin: 0 0 14px; }
+    .lede { font-size: 1.13rem; color: #344555; }
+    .card, .callout, .verdict {
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
+    }
+    .card { padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .metric { padding: 20px; }
+    .metric b { display: block; color: var(--teal); font-size: 1.5rem; line-height: 1.1; }
+    .metric span { color: var(--muted); font-size: .88rem; }
+    .callout { padding: 18px 22px; border-left: 5px solid var(--gold); }
+    .callout.warning { border-left-color: var(--coral); }
+    .callout.good { border-left-color: var(--green); }
+    .verdict { padding: 26px; background: #eaf6f1; border-color: #b8d9ca; }
+    .verdict .label { color: var(--green); font-size: .76rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 7px 0; }
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; background: var(--card); font-size: .91rem; }
+    th, td { padding: 12px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: white; background: var(--navy); }
+    tr:nth-child(even) td { background: #faf8f2; }
+    code { padding: .12em .35em; border-radius: 5px; background: #e9ecec; color: #244252; font-size: .88em; }
+    pre { overflow-x: auto; padding: 18px; border-radius: 12px; color: #e9f2f3; background: #14293c; line-height: 1.45; }
+    pre code { padding: 0; color: inherit; background: none; }
+    .pipeline { display: grid; gap: 10px; margin: 25px 0; }
+    .stage { display: grid; grid-template-columns: 52px 1fr; gap: 15px; align-items: start; padding: 17px; border: 1px solid var(--line); border-radius: 13px; background: var(--card); }
+    .stage .num { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: white; background: var(--teal); font-weight: 800; }
+    .stage b { color: var(--navy); }
+    .stage p { margin: 3px 0 0; color: var(--muted); }
+    .arrow { height: 14px; margin-left: 37px; border-left: 2px dashed #91a8aa; }
+    .score { display: inline-flex; gap: 3px; color: var(--gold); letter-spacing: .08em; }
+    .small { color: var(--muted); font-size: .86rem; }
+    .source-list li { overflow-wrap: anywhere; }
+    footer { padding: 28px; text-align: center; color: var(--muted); border-top: 1px solid var(--line); }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: static; display: none; }
+      .grid, .grid.three { grid-template-columns: 1fr; }
+    }
+    @media print {
+      .hero { padding: 36px; }
+      .layout { display: block; padding: 24px; }
+      nav { display: none; }
+      section { break-inside: avoid; }
+      .card, .callout, .verdict { box-shadow: none; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="eyebrow">Architecture · models · inference · deployment</div>
+    <h1>ACE-Step 1.5<br>Project Report</h1>
+    <p class="lead">A code-level explanation of how this open-source music generator works, what it can do, and what would be involved in turning it into a production music-generation API—with a focused assessment of instrumental, ambient, and game-score use cases.</p>
+    <div class="meta">
+      <span class="pill">Repository commit 6d467e4</span>
+      <span class="pill">Report date: 31 July 2026</span>
+      <span class="pill">Python 3.11–3.12</span>
+      <span class="pill">CUDA · ROCm · XPU · MPS/MLX · CPU</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav aria-label="Report contents">
+      <strong>Contents</strong>
+      <a href="#summary">Executive summary</a>
+      <a href="#what">What it does</a>
+      <a href="#architecture">How it works</a>
+      <a href="#models">Models and downloads</a>
+      <a href="#pipeline">Generation pipeline</a>
+      <a href="#api">Existing API</a>
+      <a href="#production">Production adaptation</a>
+      <a href="#instrumental">No lyrics / vocals</a>
+      <a href="#ambient">Ambient and game score</a>
+      <a href="#recommendation">Recommendation</a>
+      <a href="#risks">Risks and safeguards</a>
+      <a href="#sources">Sources</a>
+    </nav>
+
+    <main>
+      <section id="summary">
+        <h2>Executive summary</h2>
+        <div class="verdict">
+          <div class="label">Bottom line</div>
+          <h3>Yes—this is a credible base for an instrumental music API.</h3>
+          <p>ACE-Step 1.5 is not merely a demo model. This repository has a complete local inference stack, automatic checkpoint acquisition, hardware-aware loading, a Gradio interface, a Python API, and an asynchronous FastAPI server. The fastest practical product route is to harden the existing server and initially expose a narrow, instrumental text-to-music endpoint.</p>
+          <p>It is particularly well aligned with ambient beds and atmospheric score sketches because it accepts natural-language style, instrumentation, mood, tempo, key, meter, duration, structure, seed, and optional reference audio. It should be treated as a generative renderer, not as a complete adaptive game-music system: seamless loops, stems, loudness delivery, cue transitions, content review, and storage are surrounding product concerns.</p>
+        </div>
+        <div class="grid three" style="margin-top:16px">
+          <div class="card metric"><b>10–600 s</b><span>documented generation duration</span></div>
+          <div class="card metric"><b>48 kHz</b><span>handler output sample rate</span></div>
+          <div class="card metric"><b>Up to 8</b><span>documented batch outputs</span></div>
+        </div>
+        <h3>Direct answers</h3>
+        <table>
+          <tr><th>Question</th><th>Assessment</th></tr>
+          <tr><td>How does it work?</td><td>A planner LM optionally expands intent into metadata and 5 Hz semantic audio codes; a text encoder embeds caption/lyrics; a diffusion transformer generates compressed audio latents; a VAE decodes them to waveform audio.</td></tr>
+          <tr><td>Where are models downloaded from?</td><td>Official ACE-Step repositories on Hugging Face Hub or ModelScope, with automatic source selection and fallback, into a local <code>checkpoints/</code> tree.</td></tr>
+          <tr><td>Can it become an API service?</td><td>It already has one. Production work is mostly hardening: durable queues/state, object storage, GPU scheduling, security, observability, deployment, and product policy.</td></tr>
+          <tr><td>Is instrumental-only simpler?</td><td>Yes at the product and validation layers. The core model path remains broadly the same; set <code>instrumental=true</code> and/or lyrics to <code>[Instrumental]</code>.</td></tr>
+          <tr><td>Ambient / atmospheric score?</td><td>Yes for cue creation, ideation, alternate versions, and offline asset generation. Add post-processing and a loop/stem workflow for shipped game assets.</td></tr>
+        </table>
+      </section>
+
+      <section id="what">
+        <h2>What the project does</h2>
+        <p class="lede">ACE-Step 1.5 is a local music foundation-model application: it can create complete audio from text, use existing audio as context, perform selected editing/generation tasks, analyse musical content, and support lightweight personalization.</p>
+        <div class="grid">
+          <div class="card">
+            <h3>Generation</h3>
+            <ul>
+              <li>Text-to-music from a caption and optional lyrics.</li>
+              <li>Instrumental or vocal output in 50+ documented languages.</li>
+              <li>Control of duration, BPM, key/scale, and time signature.</li>
+              <li>Reference-audio conditioning and cover generation.</li>
+              <li>Batch alternatives with explicit or random seeds.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Transformation and editing</h3>
+            <ul>
+              <li>Repaint a selected interval.</li>
+              <li>Extract, “lego”/add layers, or complete audio with the base variants.</li>
+              <li>Generate backing music for vocals.</li>
+              <li>Flow-edit and retake/variation controls are present in the current code.</li>
+              <li>Encode/decode audio through the VAE and semantic-code path.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Planning and understanding</h3>
+            <ul>
+              <li>Turn a simple description into caption, lyrics, and metadata.</li>
+              <li>Rewrite/format prompts and fill missing musical metadata.</li>
+              <li>Generate 5 Hz semantic codes to guide composition.</li>
+              <li>Understand audio codes and extract descriptive metadata.</li>
+              <li>Generate lyric timing (LRC) and quality/alignment scores.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Interfaces and customization</h3>
+            <ul>
+              <li>Gradio web UI for interactive use.</li>
+              <li>Python dataclass-based inference API.</li>
+              <li>Async HTTP API with queued jobs and downloadable results.</li>
+              <li>LoRA and LoKR training/adapter support.</li>
+              <li>Multiple DiT variants and multiple LM sizes.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout warning" style="margin-top:18px">
+          <strong>Scope distinction.</strong> This generates rendered audio, not a symbolic MIDI score or a DAW session. “Track separation,” “lego,” and related tools are model workflows; they do not automatically provide the deterministic stems, bar-accurate transitions, loop metadata, or middleware integration expected by an adaptive game-audio engine.
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>How it works</h2>
+        <p>The architecture is hybrid. It separates high-level musical planning from high-bandwidth audio synthesis, then works in a compressed latent representation to make long-form generation practical.</p>
+        <div class="grid">
+          <div class="card">
+            <h3>1. Optional 5 Hz language model</h3>
+            <p>The ACE-Step LM is the planner. Given a plain-language request, caption, lyrics, and any supplied metadata, it can generate or refine musical metadata and a low-rate sequence of semantic audio codes. At five code steps per second, these codes describe broad musical progression rather than waveform samples.</p>
+            <p>With API <code>thinking=true</code>, this planner participates in text-to-music, lego, and complete workflows. The API documentation says it is skipped for cover, repaint, and extract.</p>
+          </div>
+          <div class="card">
+            <h3>2. Qwen3 text embedding</h3>
+            <p>The bundled <code>Qwen3-Embedding-0.6B</code> tokenizer/encoder turns the caption and lyrics/structure text into conditioning embeddings. This carries explicit concepts such as instrumentation, atmosphere, vocal intent, and section descriptions.</p>
+          </div>
+          <div class="card">
+            <h3>3. Diffusion Transformer (DiT)</h3>
+            <p>The DiT is the main generative decoder. Starting from noise—or from encoded source/context latents for editing tasks—it iteratively predicts a clean audio-latent trajectory conditioned by text, metadata, masks, semantic codes, and reference/source audio.</p>
+            <p>Turbo variants are distilled for roughly 8 steps and do not use classifier-free guidance. Base/SFT variants use more steps and can expose CFG; base has the broadest task support.</p>
+          </div>
+          <div class="card">
+            <h3>4. Audio VAE</h3>
+            <p>The VAE bridges waveform audio and the latent domain. It encodes source or reference audio for cover/repaint-style tasks and decodes generated latents to stereo waveform audio. The handler is configured for a 48 kHz sample rate.</p>
+          </div>
+        </div>
+        <h3>Why the split matters</h3>
+        <ul>
+          <li><strong>LM disabled:</strong> lower memory and latency; the DiT follows direct text/metadata conditioning.</li>
+          <li><strong>LM enabled:</strong> more planning, prompt expansion, metadata completion, and semantic-code guidance; greater memory and latency cost.</li>
+          <li><strong>VAE + latent DiT:</strong> generates a compact temporal representation rather than diffusing directly over 48,000 samples per second.</li>
+          <li><strong>Reference/source paths:</strong> the same latent machinery supports creation and editing without a completely separate application stack.</li>
+        </ul>
+      </section>
+
+      <section id="models">
+        <h2>Models and where they are downloaded from</h2>
+        <p class="lede">The downloader uses official repository IDs and stores snapshots as ordinary local directories. It supports Hugging Face Hub and ModelScope, tries the preferred/auto-selected source first, and falls back to the other source on failure.</p>
+
+        <h3>Default bundle</h3>
+        <p>The main repository ID is <a href="https://huggingface.co/ACE-Step/Ace-Step1.5">ACE-Step/Ace-Step1.5</a> (the same ID is used on ModelScope). It is downloaded into the checkpoint root and contains:</p>
+        <table>
+          <tr><th>Directory</th><th>Role</th></tr>
+          <tr><td><code>acestep-v15-turbo/</code></td><td>Default 2B-class, 8-step diffusion transformer.</td></tr>
+          <tr><td><code>vae/</code></td><td>Official audio encoder/decoder.</td></tr>
+          <tr><td><code>Qwen3-Embedding-0.6B/</code></td><td>Caption and lyrics text encoder.</td></tr>
+          <tr><td><code>acestep-5Hz-lm-1.7B/</code></td><td>Default music-planning language model.</td></tr>
+        </table>
+
+        <h3>Separately downloadable variants</h3>
+        <table>
+          <tr><th>Family</th><th>Registered choices</th><th>Use</th></tr>
+          <tr><td>LM</td><td><code>0.6B</code>, bundled <code>1.7B</code>, <code>4B</code></td><td>Trade memory/speed for stronger planning and audio understanding.</td></tr>
+          <tr><td>2B DiT</td><td><code>base</code>, <code>sft</code>, turbo shift/continuous variants</td><td>Base for full task coverage/fine-tuning; SFT for detail; turbo for throughput.</td></tr>
+          <tr><td>XL DiT</td><td><code>xl-base</code>, <code>xl-sft</code>, <code>xl-turbo</code></td><td>4B decoder family for higher quality, with materially higher VRAM demand.</td></tr>
+          <tr><td>Optional VAE</td><td><code>scragvae</code></td><td>Community VAE from <code>scragnog/Ace-Step-1.5-ScragVAE</code> on Hugging Face.</td></tr>
+        </table>
+
+        <h3>Download and cache behavior</h3>
+        <ul>
+          <li>Hugging Face uses <code>huggingface_hub.snapshot_download(..., local_dir=...)</code>.</li>
+          <li>ModelScope uses <code>modelscope.snapshot_download(..., local_dir=...)</code>.</li>
+          <li><code>--download-source huggingface|modelscope|auto</code> selects behavior. Auto uses a simple network reachability test, then falls back if the first source fails.</li>
+          <li>Checkpoint root precedence is: explicit argument, <code>ACESTEP_CHECKPOINTS_DIR</code>, then <code>&lt;project root&gt;/checkpoints</code>.</li>
+          <li>First launch can auto-download missing weights; <code>uv run acestep-download</code> permits pre-provisioning.</li>
+        </ul>
+        <pre><code>checkpoints/
+├── acestep-v15-turbo/
+├── vae/
+├── Qwen3-Embedding-0.6B/
+└── acestep-5Hz-lm-1.7B/</code></pre>
+        <div class="callout">
+          <strong>Production recommendation:</strong> bake or pre-fetch exact, revision-pinned model snapshots into a shared read-only model volume or machine image. Do not let every replica independently download “latest” weights on its first live request. Pin hashes, verify artifacts, scan remote model code, and promote models through environments like application releases.
+        </div>
+      </section>
+
+      <section id="pipeline">
+        <h2>The end-to-end generation pipeline</h2>
+        <div class="pipeline" role="list" aria-label="Generation pipeline">
+          <div class="stage"><div class="num">1</div><div><b>Accept intent</b><p>Caption, lyrics or instrumental flag, duration, BPM, key, meter, seed, task type, and optional source/reference audio arrive through Gradio, Python, or HTTP.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">2</div><div><b>Validate and normalize</b><p>Parameter aliases are resolved, ranges and task requirements are checked, seeds/batch size are prepared, files are staged, and a task-specific instruction is selected.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">3</div><div><b>Plan with the LM (optional)</b><p>The 5 Hz LM may rewrite the caption, detect vocal language, fill missing BPM/key/meter/duration, create lyrics/sample structure, and generate semantic audio-code sequences.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">4</div><div><b>Build conditioning</b><p>The text encoder embeds caption and lyrics. Metadata, semantic codes, task instruction, source/reference latents, and temporal masks are aligned and batched.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">5</div><div><b>Encode context audio when needed</b><p>The VAE converts reference/source waveform into latent tensors for cover, repaint, extract, lego, complete, or related edit paths. Text-to-music can start without source audio.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">6</div><div><b>Run diffusion</b><p>The DiT iteratively transforms noise/context latents into target audio latents. The sampler supports ODE/SDE choices, Euler/Heun options, task masks, guidance where the model permits it, and advanced correction/edit controls.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">7</div><div><b>Decode and post-process</b><p>The VAE produces waveform audio. Optional normalization and fades are applied; results are written as FLAC, WAV/WAV32, MP3, Opus, or AAC.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">8</div><div><b>Return result metadata</b><p>Paths/URLs, seeds, parameters, generated metadata, semantic codes, scores, and status are assembled for playback, download, or downstream processing.</p></div></div>
+        </div>
+
+        <h3>Two useful operating modes</h3>
+        <table>
+          <tr><th>Mode</th><th>Flow</th><th>Best fit</th></tr>
+          <tr><td>Direct DiT</td><td>Prompt + metadata → text conditioning → DiT → VAE</td><td>Lower VRAM, predictable latency, already-structured prompts, high-throughput API tier.</td></tr>
+          <tr><td>LM + DiT (“thinking”)</td><td>Natural language → LM plan/codes → conditioned DiT → VAE</td><td>Simple user requests, long-form structure, automatic metadata, stronger composition planning.</td></tr>
+        </table>
+      </section>
+
+      <section id="api">
+        <h2>What the existing API already provides</h2>
+        <p>The repository’s <code>acestep/api_server.py</code> builds a FastAPI application. It uses an in-process asyncio queue and job store, background workers, a thread-pool executor for blocking inference, progress/result caching, temporary upload/output paths, optional API-key authentication, and optional extra model handlers.</p>
+        <table>
+          <tr><th>Endpoint</th><th>Purpose</th></tr>
+          <tr><td><code>POST /release_task</code></td><td>Submit JSON, form, or multipart generation input; returns a task ID and queue position.</td></tr>
+          <tr><td><code>POST /query_result</code></td><td>Poll one or more task IDs; status is queued/running, succeeded, or failed.</td></tr>
+          <tr><td><code>GET /v1/audio?path=...</code></td><td>Download a generated local audio file through the server.</td></tr>
+          <tr><td><code>POST /create_random_sample</code></td><td>Ask the LM to create a complete set of music parameters.</td></tr>
+          <tr><td><code>POST /format_input</code></td><td>Ask the LM to enhance/format caption and lyrics.</td></tr>
+          <tr><td><code>GET /v1/models</code></td><td>List available models.</td></tr>
+          <tr><td><code>GET /health</code></td><td>Health/readiness information.</td></tr>
+        </table>
+        <p>The documented client workflow is submit → poll → download. This is the correct general shape for GPU generation because a request may queue and can outlive a normal synchronous HTTP timeout.</p>
+        <pre><code>POST /release_task
+{
+  "prompt": "slow evolving dark ambient, bowed metal, distant choir-like pads",
+  "lyrics": "[Instrumental]",
+  "audio_duration": 90,
+  "thinking": true,
+  "batch_size": 2,
+  "audio_format": "flac"
+}
+
+→ { "data": { "task_id": "…", "status": "queued" }, "code": 200 }
+
+POST /query_result  →  GET /v1/audio?path=…</code></pre>
+        <div class="callout warning">
+          <strong>Important current limitation:</strong> the server source explicitly says its queue and job store are in memory and Uvicorn should run with one process worker. That is suitable for a single-node service or prototype, not a horizontally scalable production control plane.
+        </div>
+      </section>
+
+      <section id="production">
+        <h2>Adapting it to a production music API</h2>
+        <p class="lede">The shortest path is to retain the inference handlers and generation contract, but replace process-local operational components with durable services and place a narrow public API in front.</p>
+
+        <h3>Recommended service shape</h3>
+        <div class="pipeline">
+          <div class="stage"><div class="num">A</div><div><b>Public API / control plane</b><p>Authenticate, authorize, validate quotas and prompt limits, create an idempotent job, expose status/cancel/webhook endpoints, and issue signed download URLs.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">B</div><div><b>Durable broker and database</b><p>Store job state and parameters in Postgres or equivalent; enqueue work in Redis/RQ, Celery, RabbitMQ, SQS, or a cloud-native queue. A request survives API restarts.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">C</div><div><b>GPU inference workers</b><p>One active generation per GPU initially; keep chosen LM/DiT/VAE resident, load pinned checkpoints at startup, report health and progress, and isolate different model tiers in separate pools.</p></div></div>
+          <div class="arrow"></div>
+          <div class="stage"><div class="num">D</div><div><b>Artifact pipeline</b><p>Write lossless masters and previews to S3-compatible object storage; run loudness, fade, loop, transcode, waveform/metadata, moderation, and retention steps.</p></div></div>
+        </div>
+
+        <h3>Work involved by layer</h3>
+        <table>
+          <tr><th>Layer</th><th>What to implement</th><th>Why</th></tr>
+          <tr><td>API contract</td><td>Create versioned <code>/v1/generations</code>, status, cancel, webhook, and artifact endpoints. Preserve seeds and effective parameters.</td><td>A stable public contract should not mirror every internal knob.</td></tr>
+          <tr><td>Security</td><td>Hashed API keys/OAuth, TLS, rate limits, tenant quotas, strict upload MIME/size/duration validation, path isolation, signed artifact URLs, secret management.</td><td>The current optional shared key and path-based download route are not enough for multi-tenant internet exposure.</td></tr>
+          <tr><td>Durability</td><td>External job database and broker, leases/heartbeats, retry policy, dead-letter queue, idempotency keys, cancellation semantics.</td><td>Prevents lost/duplicated jobs across crashes and deploys.</td></tr>
+          <tr><td>GPU scheduling</td><td>Worker capability labels, VRAM-aware model routing, admission control by duration/batch/model, warm pools, concurrency benchmarks, OOM recovery.</td><td>Duration, batch size, LM, DiT family, quantization, and offload strongly affect memory and latency.</td></tr>
+          <tr><td>Model operations</td><td>Pin repository revisions/checksums, pre-stage weights, record model version per output, canary new variants, maintain rollback.</td><td>Reproducibility and supply-chain safety.</td></tr>
+          <tr><td>Storage</td><td>Object storage, lifecycle/retention rules, CDN, waveform previews, server-side transcodes, customer deletion.</td><td>Local temporary files do not scale and should not be directly exposed.</td></tr>
+          <tr><td>Observability</td><td>Metrics by stage/model/duration, structured logs, traces, GPU/VRAM telemetry, queue age, failure taxonomy, quality sampling.</td><td>Needed for capacity, SLOs, cost, and regression detection.</td></tr>
+          <tr><td>Abuse/legal</td><td>Terms, consent for uploads, prohibited impersonation/style policies, prompt/upload/output review, provenance, takedown process, regional privacy handling.</td><td>Music generation introduces copyright, voice, privacy, and misuse risks even when code/weights are permissively licensed.</td></tr>
+        </table>
+
+        <h3>A sensible staged build</h3>
+        <ol>
+          <li><strong>Internal prototype:</strong> run the existing API on one GPU; instrumental text-to-music only; fixed turbo model; FLAC master plus MP3 preview.</li>
+          <li><strong>Single-node beta:</strong> add database-backed jobs, object storage, signed URLs, API keys/quotas, model warm-up, dashboards, and restart recovery.</li>
+          <li><strong>Multi-GPU production:</strong> separate API and workers, durable queue, capability-based routing, autoscaling, pinned model images, webhooks, cancellation, and cost accounting.</li>
+          <li><strong>Creative platform:</strong> add reference uploads, variations, repainting, LoRA tenant isolation, loop/stem tools, and human review workflows.</li>
+        </ol>
+        <div class="callout good">
+          <strong>Keep the GPU worker simple.</strong> A worker should receive a validated immutable job, choose an already-warm model, call the existing Python generation API, upload artifacts, and report terminal state. Authentication, billing, database ownership, and public file serving belong outside the inference process.
+        </div>
+      </section>
+
+      <section id="instrumental">
+        <h2>Is a no-lyrics / no-vocals version simpler?</h2>
+        <div class="verdict">
+          <div class="label">Assessment</div>
+          <h3>Yes—meaningfully simpler as a product, modestly simpler computationally.</h3>
+          <p>The code already supports instrumental generation through <code>instrumental=true</code> and the canonical lyrics marker <code>[Instrumental]</code>. There is no need to train or fork a separate model just to launch an instrumental service.</p>
+        </div>
+        <h3>What becomes simpler</h3>
+        <ul>
+          <li>No lyric input UI, lyric generation, multilingual lyric validation, explicit-language detection, LRC timing, or lyric-alignment display.</li>
+          <li>Less risk of generating requested copyrighted lyrics, offensive text, personally targeted vocals, or confusing language/pronunciation failures.</li>
+          <li>A smaller public request schema and easier quality review: prompt, duration, mood/style, instrumentation, tempo/key/meter, seed, model tier.</li>
+          <li>Potentially skip some LM work. Well-structured instrumental prompts can use direct DiT mode; the LM remains useful for long-form planning and metadata.</li>
+        </ul>
+        <h3>What does not become simpler</h3>
+        <ul>
+          <li>The DiT, text encoder, VAE, GPU scheduling, queue, storage, and post-processing are still required.</li>
+          <li>“Instrumental” is conditioning, not a mathematical guarantee. Quality assurance should detect unintended voice-like or sung content if a strict no-vocal promise matters.</li>
+          <li>Copyright/style similarity and reference-audio rights remain relevant.</li>
+          <li>Long-duration coherence, clean endings, seamless loops, mastering, and variation control remain audio-generation challenges.</li>
+        </ul>
+        <h3>Recommended instrumental API surface</h3>
+        <pre><code>{
+  "prompt": "windswept alien desert at dusk; evolving granular pads; sparse duduk",
+  "duration_seconds": 120,
+  "tempo_bpm": 62,
+  "key": "D minor",
+  "structure": ["intro", "slow build", "plateau", "soft resolve"],
+  "seed": 184732,
+  "quality": "standard",
+  "outputs": 2
+}</code></pre>
+        <p>The service would translate <code>structure</code> into instrumental section text, force <code>instrumental=true</code>, set lyrics to <code>[Instrumental]</code>, and hide advanced inference parameters behind tested presets.</p>
+      </section>
+
+      <section id="ambient">
+        <h2>Ambient music and atmospheric film/game score</h2>
+        <p class="lede">This is one of the project’s more natural use cases, provided “appropriate” means generating and iterating rendered cues—not authoring a fully adaptive score directly inside the model.</p>
+        <div class="grid">
+          <div class="card">
+            <h3>Why it fits</h3>
+            <ul>
+              <li>Caption conditioning supports mood, space, texture, timbre, instrumentation, density, dynamics, and narrative arc.</li>
+              <li>Durations up to 10 minutes suit beds, exploration cues, and long atmospheric sketches.</li>
+              <li>Instrumental structure tags can describe temporal development without lyrics.</li>
+              <li>Reference audio, repainting, and seeded variations support iteration around an established direction.</li>
+              <li>Fast turbo inference and batching are useful for generating candidate sets.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Where it needs help</h3>
+            <ul>
+              <li>Sample-perfect seamless looping needs a dedicated render/edit/test stage.</li>
+              <li>Bar-accurate intro/loop/outro boundaries and transition stingers need explicit tooling and review.</li>
+              <li>Interactive horizontal re-sequencing or vertical stem mixing needs exported assets plus FMOD/Wwise/game-engine logic.</li>
+              <li>Prompt adherence and musical continuity remain probabilistic; use selection and regeneration.</li>
+              <li>Final loudness, true peak, phase, spectral balance, and platform encoding need mastering/QC.</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>Use-case scorecard</h3>
+        <table>
+          <tr><th>Use case</th><th>Fit</th><th>Notes</th></tr>
+          <tr><td>Ambient concept sketches</td><td><span class="score">★★★★★</span></td><td>Excellent match for textural prompting and batch exploration.</td></tr>
+          <tr><td>Offline video background beds</td><td><span class="score">★★★★☆</span></td><td>Strong, after edit, loudness, and rights/QC review.</td></tr>
+          <tr><td>Linear cinematic/game cues</td><td><span class="score">★★★★☆</span></td><td>Useful for complete cues; hitting exact picture beats may require repaint/edit/DAW work.</td></tr>
+          <tr><td>Seamless exploration loops</td><td><span class="score">★★★☆☆</span></td><td>Good source material, but loop extraction/crossfade and auditioning should be automated.</td></tr>
+          <tr><td>Adaptive multi-stem score</td><td><span class="score">★★☆☆☆</span></td><td>Possible as part of a larger pipeline; consistency and stem synchronization need significant product work.</td></tr>
+          <tr><td>Real-time generation during gameplay</td><td><span class="score">★☆☆☆☆</span></td><td>Not the first recommended architecture. Pre-generate/cue/cache assets; latency and determinism are safer offline.</td></tr>
+        </table>
+
+        <h3>Prompting pattern for atmospheric cues</h3>
+        <p>Use concrete sonic nouns and an explicit arc. Avoid relying only on abstract adjectives.</p>
+        <pre><code>Caption:
+Dark science-fiction exploration underscore; very slow harmonic rhythm;
+granular low strings, bowed metal, distant bass clarinet, soft sub drones;
+wide cold space, restrained tension, no percussion, no vocals;
+sparse foreground events, long decays, seamless-feeling texture.
+
+Instrumental structure:
+[Intro - near silence, filtered drone]
+[Development - introduce bowed metal pulses]
+[Main Theme - low strings, subtle two-note motif]
+[Plateau - sustained tension, no climax]
+[Outro - remove motif, leave tail for editing]</code></pre>
+
+        <h3>Production workflow for a game</h3>
+        <ol>
+          <li>Generate several lossless candidates at a longer duration than the target loop.</li>
+          <li>Automatically reject clipping, long silence, unintended vocals, and obvious technical defects.</li>
+          <li>Select/edit a musically stable loop region; cut on compatible phase/bar positions and crossfade.</li>
+          <li>Create intro, loop, outro, and intensity alternatives using seeded variations, repainting, or DAW edits.</li>
+          <li>Master all related assets to a shared loudness/spectral target and test encoded builds.</li>
+          <li>Integrate the rendered assets into Wwise/FMOD or engine audio logic; do runtime transitions there.</li>
+        </ol>
+      </section>
+
+      <section id="recommendation">
+        <h2>Recommended starting configuration</h2>
+        <table>
+          <tr><th>Concern</th><th>Starting choice</th><th>Reason</th></tr>
+          <tr><td>Product scope</td><td>Instrumental text-to-music only</td><td>Small contract, strong ambient use case, fewer lyric/vocal policy and QC concerns.</td></tr>
+          <tr><td>DiT</td><td><code>acestep-v15-turbo</code></td><td>Default bundle, 8-step throughput, modest VRAM relative to XL.</td></tr>
+          <tr><td>Planner LM</td><td>1.7B for “creative” tier; optional/no LM for “fast” tier</td><td>Retains natural-language planning while permitting a lower-cost route.</td></tr>
+          <tr><td>Worker concurrency</td><td>One generation per GPU until measured</td><td>Avoids optimistic oversubscription; raise only from load and VRAM tests.</td></tr>
+          <tr><td>Output</td><td>FLAC master + MP3/AAC preview</td><td>Lossless downstream editing plus convenient listening.</td></tr>
+          <tr><td>Duration</td><td>30–180 seconds initially</td><td>Controls cost and queue time while covering most cue/bed prototypes.</td></tr>
+          <tr><td>Async pattern</td><td>Job ID + polling + optional webhook</td><td>Matches the existing API and GPU workload characteristics.</td></tr>
+          <tr><td>Scaling</td><td>External queue/database/object store</td><td>Removes the principal single-process limitation.</td></tr>
+        </table>
+        <p>Move to <code>xl-turbo</code> only after blind quality tests justify the roughly larger memory footprint and lower worker density. Use base/SFT variants when their task coverage, CFG control, fine-tuning, or detail actually matters; do not expose every model as a customer-facing choice on day one.</p>
+      </section>
+
+      <section id="risks">
+        <h2>Risks, licensing, and safeguards</h2>
+        <h3>Licensing and commercial use</h3>
+        <p>The repository’s software license is MIT. The official Hugging Face model cards for the main bundle and XL Turbo also display MIT and state that generated music may be used commercially. That is encouraging, but it is not a substitute for legal review of your exact model revisions, dependencies, uploaded reference material, output use, customer jurisdiction, and product claims.</p>
+        <div class="callout warning">
+          <strong>Do not promise “copyright-free” output.</strong> A permissive model license grants rights in the model; it cannot guarantee that every stochastic output is non-infringing or that a customer’s prompt/reference upload is lawful. Preserve provenance and effective parameters, prohibit unauthorized uploads/impersonation, support takedowns, and review high-risk uses.
+        </div>
+        <h3>Technical and operational risks</h3>
+        <ul>
+          <li><strong>GPU OOM and latency variance:</strong> enforce duration/batch/model limits and route by measured VRAM.</li>
+          <li><strong>Cold starts:</strong> pre-download and warm models; readiness should not become true before a smoke inference passes.</li>
+          <li><strong>Supply chain:</strong> checkpoints may include remote model code; pin and audit revisions rather than trusting mutable upstream state.</li>
+          <li><strong>Path and upload security:</strong> never accept arbitrary server filesystem paths from public clients; store uploads under tenant/job-scoped generated names.</li>
+          <li><strong>Reproducibility:</strong> record model revision, code build, seed, sampler, all resolved metadata, quantization/offload settings, and post-processing version.</li>
+          <li><strong>Quality drift:</strong> maintain a fixed prompt suite and human/audio-metric acceptance tests for every model or inference change.</li>
+          <li><strong>Privacy:</strong> define retention and deletion for prompts, reference audio, outputs, and logs; do not silently reuse customer audio for training.</li>
+        </ul>
+      </section>
+
+      <section id="sources">
+        <h2>Sources and methodology</h2>
+        <p>This report is a static analysis of repository commit <code>6d467e4</code>, cross-checked against the official model cards on 31 July 2026. Performance and quality descriptions are project claims unless independently measured; capacity recommendations should be validated on the target GPU and workload.</p>
+        <h3>Key repository sources</h3>
+        <ul class="source-list">
+          <li><a href="README.md">README.md</a> — product scope, model zoo, performance claims, architecture overview, and project disclaimer.</li>
+          <li><a href="acestep/model_downloader.py">acestep/model_downloader.py</a> — registries, Hugging Face/ModelScope fallback, checkpoint paths.</li>
+          <li><a href="acestep/inference.py">acestep/inference.py</a> — public generation parameters and orchestration API.</li>
+          <li><a href="acestep/handler.py">acestep/handler.py</a> and <a href="acestep/core/generation/handler/">generation handlers</a> — model initialization, conditioning, diffusion, VAE, and service execution.</li>
+          <li><a href="acestep/api_server.py">acestep/api_server.py</a> and <a href="acestep/api/">acestep/api/</a> — HTTP routes, job runtime, worker queue, and server state.</li>
+          <li><a href="docs/en/API.md">docs/en/API.md</a> — HTTP request/response contract.</li>
+          <li><a href="docs/en/INFERENCE.md">docs/en/INFERENCE.md</a> — Python API and parameter semantics.</li>
+          <li><a href="docs/en/Tutorial.md">docs/en/Tutorial.md</a> — model selection and prompting/structure guidance.</li>
+          <li><a href="docs/en/INSTALL.md">docs/en/INSTALL.md</a> — platform, download, and environment configuration.</li>
+          <li><a href="LICENSE">LICENSE</a> — repository software license.</li>
+        </ul>
+        <h3>Official external sources</h3>
+        <ul class="source-list">
+          <li><a href="https://huggingface.co/ACE-Step/Ace-Step1.5">ACE-Step/Ace-Step1.5 model card</a> — default bundle, model license, features, and commercial-use statement.</li>
+          <li><a href="https://huggingface.co/ACE-Step/acestep-v15-xl-turbo">ACE-Step 1.5 XL Turbo model card</a> — XL architecture, memory guidance, license, and intended use.</li>
+          <li><a href="https://modelscope.cn/organization/ACE-Step">ACE-Step on ModelScope</a> — alternate official download source.</li>
+        </ul>
+        <p class="small">This is a technical/product assessment, not legal advice. Generated audio should be evaluated by qualified reviewers before commercial release.</p>
+      </section>
+    </main>
+  </div>
+  <footer>ACE-Step 1.5 technical and product assessment · self-contained HTML report</footer>
+</body>
+</html>
