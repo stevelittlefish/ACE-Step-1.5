@@ -8,7 +8,7 @@
 #   docker compose up --build -d
 #   docker compose logs -f acestep
 #   Open http://localhost:7860 for the Web UI
-#   curl http://localhost:8001/health
+#   curl http://localhost:8002/health
 #
 # Persistent data is intentionally kept outside the repository under
 # /srv/acestep. Override ACESTEP_DATA_ROOT if a different host path is needed.
@@ -63,9 +63,9 @@ services:
     # ---- Ports ----
     ports:
       # Both host ports reach the same Gradio/FastAPI process. Port 7860 is the
-      # UI; port 8001 preserves the existing API address for LAN clients.
+      # UI; port 8002 provides a separate API address for LAN clients.
       - "0.0.0.0:${GRADIO_PORT:-7860}:7860"
-      - "0.0.0.0:${API_PORT:-8001}:7860"
+      - "0.0.0.0:${API_PORT:-8002}:7860"
 
     # ---- Persistent volumes ----
     volumes:
