@@ -66,6 +66,27 @@ The successful retry used:
 The API still reported automatically inferred metadata after generation, but omitting explicit
 metadata and planner codes materially improved the audible result.
 
+## Experiment Log
+
+### Environmental pads with rain and insects
+
+- Model: `acestep-v15-xl-turbo`
+- Thinking: disabled
+- BPM/key/meter: unspecified
+- Duration: 300 seconds
+- Seed: `46721093`
+- Result: More convincingly ambient and beatless, but audibly very dissonant.
+
+Likely prompt causes were overlapping suspended chords, independently moving glass harmonics,
+granular haze, and the lack of a stable tonal centre. For the next controlled test, retain the
+same seed and generation settings while changing only the harmonic description:
+
+- establish one tonal centre throughout;
+- favour perfect fifths, octaves, and a simple major pentatonic palette;
+- hold one consonant chord for long spans;
+- let existing tones settle before introducing another pitch;
+- keep field recordings behind the tonal pad rather than treating them as pitched layers.
+
 ## Refinement Method
 
 For each experiment:
