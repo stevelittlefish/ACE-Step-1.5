@@ -8,11 +8,9 @@
 #   docker compose up --build -d
 #   docker compose logs -f acestep
 #   curl http://localhost:8020/health
+#   Open http://localhost:8020/docs for the OpenAPI schema
 #
-# Runs in API mode by default, which has no Web UI. For the Gradio UI:
-#   ACESTEP_MODE=gradio ACESTEP_EXTRA_ARGS="--enable-api --api-key qwe123" \
-#     docker compose up -d
-#   Open http://localhost:7860
+# API mode only. There is no Web UI, which is deliberate.
 #
 # Persistent data is intentionally kept outside the repository under
 # /srv/acestep. Override ACESTEP_DATA_ROOT if a different host path is needed.
@@ -52,11 +50,11 @@ services:
       # What the real API server adds: a job queue with workers, POST
       # /v1/reinitialize and /v1/init to swap models without restarting the
       # container, /v1/models and /v1/model_inventory to ask what is loaded,
-      # and CONFIG_PATH2/3 to hold several DiTs at once and pick per request.
+      # CONFIG_PATH2/3 to hold several DiTs at once and pick per request, and
+      # an OpenAPI schema at /docs.
       #
-      # What it costs: there is no Web UI in this mode. Set ACESTEP_MODE=gradio
-      # to get it back.
-      ACESTEP_MODE: ${ACESTEP_MODE:-api}
+      # There is no Web UI in this mode, which is the point.
+      ACESTEP_MODE: api
 
       # 8020 because 7860 is the Gradio UI and 8001 is SillyTavern. Any port
       # chosen here must be free on the host, and must match slopbc.toml's
@@ -64,17 +62,13 @@ services:
       ACESTEP_API_HOST: 0.0.0.0
       ACESTEP_API_PORT: ${ACESTEP_API_PORT:-8020}
 
-      GRADIO_SERVER_NAME: 0.0.0.0
-      GRADIO_PORT: 7860
-
       # Personal LAN API authentication. In api mode this is read straight from
       # the environment by acestep/api/server_cli.py; it needs no CLI flag.
       ACESTEP_API_KEY: qwe123
 
-      # Deliberately empty. The entrypoint passes ACESTEP_EXTRA_ARGS to BOTH
+      # Deliberately empty. The entrypoint passes ACESTEP_EXTRA_ARGS to both
       # modes, and `--enable-api` is a Gradio-only flag: api_server's argparse
-      # rejects it and the container dies at startup. Only set this when
-      # ACESTEP_MODE is gradio.
+      # rejects unknown flags and the container dies at startup.
       ACESTEP_EXTRA_ARGS: ""
       ACESTEP_DOWNLOAD_SOURCE: ${ACESTEP_DOWNLOAD_SOURCE:-auto}
       # Maximum-quality configuration for a 24 GB RTX 3090 (slower) — ACTIVE.
@@ -89,13 +83,32 @@ services:
       # nothing — slopbc.toml sets it true. See SlopBC's docs/ace-step.md.
       #
       # Both fit a 24 GB card without offload, per the README's VRAM table.
-      ACESTEP_CONFIG_PATH: acestep-v15-xl-sft
-      ACESTEP_INIT_LLM: "true"
-      ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-4B
+      # CHANGED 2026-08-02: back to xl-turbo, because xl-sft produces noise on
+      # this deployment at every step count, guidance and shift we tried — 8,
+      # 20, 50, 150 steps, guidance 1 through 9, shift 1 and 3, with and
+      # without the LM, and finally under a fully deterministic request. Turbo
+      # was clean in every one of the same tests. That points at the sft
+      # checkpoint on this box rather than at any setting; the untried fix is
+      # deleting /srv/acestep/checkpoints/acestep-v15-xl-sft and re-downloading.
       #
-      # Faster XL Turbo configuration (previous):
-      # ACESTEP_CONFIG_PATH: acestep-v15-xl-turbo
-      # ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-1.7B
+      # Turbo is also the simpler thing to run: it is DMD-GAN distilled and
+      # clamps at 8 steps, and the handler forces guidance_scale to 1.0, so two
+      # of the knobs that wasted an evening cannot be set wrong.
+      ACESTEP_CONFIG_PATH: acestep-v15-xl-turbo
+      ACESTEP_INIT_LLM: "true"
+      ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-1.7B
+      #
+      # 1.7B rather than 4B: api mode keeps every model resident where the
+      # Gradio entry point offloaded between stages, so a 4B DiT and a 4B LM no
+      # longer fit in 23.6 GB together. Symptom is a 500 from /v1/init saying
+      # "CUDA out of memory" for the LM while the DiT loads fine, and then
+      # this in the log, which degrades silently rather than failing:
+      #   vLLM disabled due to insufficient free VRAM ... falling back to PyTorch
+      #
+      # Note /v1/init does NOT free the previous weights. After a few model
+      # swaps VRAM is exhausted and even a 4-minute render fails its pre-flight.
+      # Restart the container rather than trying to swap your way out.
+      # ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-4B
       ACESTEP_LM_BACKEND: vllm
       ACESTEP_DEVICE: ${ACESTEP_DEVICE:-auto}
       ACESTEP_NO_INIT: ${ACESTEP_NO_INIT:-false}
@@ -118,7 +131,6 @@ services:
     # Gradio UI, so neither is available for this.
     ports:
       - "0.0.0.0:${ACESTEP_API_PORT:-8020}:${ACESTEP_API_PORT:-8020}"
-      - "0.0.0.0:${GRADIO_PORT:-7860}:7860"
 
     # ---- Persistent volumes ----
     volumes:
@@ -146,10 +158,9 @@ services:
 
     restart: unless-stopped
 
-    # Tries whichever port the active mode is serving. /health is the only
-    # endpoint that answers without a token in either mode.
+    # /health is the only endpoint that answers without a token.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:${ACESTEP_API_PORT:-8020}/health >/dev/null || curl -fsS http://localhost:7860/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${ACESTEP_API_PORT:-8020}/health >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 10m
