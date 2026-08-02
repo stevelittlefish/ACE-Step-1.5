@@ -36,6 +36,8 @@ Usage inside a sampler step::
 
 from __future__ import annotations
 
+import os
+
 import torch
 from loguru import logger
 
@@ -87,6 +89,35 @@ class DCWCorrector:
                 f"Invalid dcw_mode='{mode}'. Expected one of {VALID_DCW_MODES}."
             )
         self.enabled = bool(enabled)
+
+        # LOCAL CHANGE: ACESTEP_DCW_ENABLED=false forces DCW off everywhere.
+        #
+        # It is applied here, in the corrector itself, rather than at any of the
+        # callers, because `dcw_enabled: bool = True` is re-defaulted at every
+        # layer of the chain — inference.py's params dataclass,
+        # handler/generate_music.py:212, service_generate.py:54, and again as
+        # generate_kwargs.get("dcw_enabled", True) in
+        # service_generate_execute.py:241. Patching any one of them is silently
+        # overridden by the next, which is exactly what happened on the first
+        # attempt: inference.py was patched, the container rebuilt, and
+        # "[DCW] Active" still appeared in the log. This is the one place that
+        # cannot be bypassed.
+        #
+        # Why turn it off at all: DCW rewrites the latent once per sampler step
+        # and is not exposed in the REST API. xl-sft on this deployment gets
+        # worse as inference_steps rises — best at 4 or 5, chaotic by 10 —
+        # which is backwards for a flow model and is what a per-step
+        # perturbation accumulating looks like rather than a trajectory
+        # converging. Classifier-free guidance was ruled out by a run at
+        # guidance_scale=1.0, where do_cfg is false and the sampler never
+        # enters the CFG branch, and the divergence persisted. DCW was the only
+        # other per-step term. xl-turbo escapes it by clamping to 8 steps.
+        if os.getenv("ACESTEP_DCW_ENABLED", "true").strip().lower() not in {
+            "1", "true", "yes", "y", "on",
+        }:
+            if self.enabled:
+                logger.info("[DCW] Disabled by ACESTEP_DCW_ENABLED")
+            self.enabled = False
         self.mode = mode
         self.scaler = float(scaler)
         self.high_scaler = float(high_scaler)
