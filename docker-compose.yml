@@ -60,7 +60,7 @@ services:
       # chosen here must be free on the host, and must match slopbc.toml's
       # [acestep] base_url.
       ACESTEP_API_HOST: 0.0.0.0
-      ACESTEP_API_PORT: ${ACESTEP_API_PORT:-8020}
+      ACESTEP_API_PORT: "8020"
 
       # Personal LAN API authentication. In api mode this is read straight from
       # the environment by acestep/api/server_cli.py; it needs no CLI flag.
@@ -71,44 +71,67 @@ services:
       # rejects unknown flags and the container dies at startup.
       ACESTEP_EXTRA_ARGS: ""
       ACESTEP_DOWNLOAD_SOURCE: ${ACESTEP_DOWNLOAD_SOURCE:-auto}
-      # Maximum-quality configuration for a 24 GB RTX 3090 (slower) — ACTIVE.
+      # ---- Models ----
       #
-      # xl-sft rather than xl-turbo: the model zoo rates both "Very High", but
-      # only the non-turbo models support classifier-free guidance, so
-      # guidance_scale and shift do nothing on turbo. It costs 50 inference
-      # steps instead of 8.
+      # Edit these to swap, then restart. Restarting is the right way to swap in
+      # any case: POST /v1/init does NOT free the previous weights, so after a
+      # few swaps VRAM is exhausted and even a 4-minute render fails its
+      # pre-flight check.
       #
-      # The 4B LM only earns its VRAM when the client sends thinking=true. With
-      # thinking=false the LM does not plan at all and a bigger one changes
-      # nothing — slopbc.toml sets it true. See SlopBC's docs/ace-step.md.
+      # CURRENT: xl-sft + the 4B planner, to test whether DCW below is what has
+      # been wrecking sft. Two 4B models only fit because offload is on.
       #
-      # Both fit a 24 GB card without offload, per the README's VRAM table.
-      # CHANGED 2026-08-02: back to xl-turbo, because xl-sft produces noise on
-      # this deployment at every step count, guidance and shift we tried — 8,
-      # 20, 50, 150 steps, guidance 1 through 9, shift 1 and 3, with and
-      # without the LM, and finally under a fully deterministic request. Turbo
-      # was clean in every one of the same tests. That points at the sft
-      # checkpoint on this box rather than at any setting; the untried fix is
-      # deleting /srv/acestep/checkpoints/acestep-v15-xl-sft and re-downloading.
+      # The known-good fallback, if the DCW test does not clear sft:
+      #   ACESTEP_CONFIG_PATH: acestep-v15-xl-turbo
+      #   ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-1.7B
       #
-      # Turbo is also the simpler thing to run: it is DMD-GAN distilled and
-      # clamps at 8 steps, and the handler forces guidance_scale to 1.0, so two
-      # of the knobs that wasted an evening cannot be set wrong.
-      ACESTEP_CONFIG_PATH: acestep-v15-xl-turbo
+      # xl-sft produces noise on this box at 4, 6, 8, 10, 20, 50 and 150 steps,
+      # at guidance 1 through 9, at shift 1 and 3, with the LM planner and
+      # without, on both entry points, and under a request proven byte-identical
+      # on repeat. Turbo was clean in every one of the same tests. The one thing
+      # never varied across all of that is DCW, which is why it is off below.
+      #
+      # Turbo is also less to get wrong: DMD-GAN distilled, hard-clamped at 8
+      # steps, and the handler rewrites guidance_scale to 1.0 regardless, so two
+      # of the knobs that consumed an evening cannot be set incorrectly.
+      ACESTEP_CONFIG_PATH: acestep-v15-xl-sft
       ACESTEP_INIT_LLM: "true"
-      ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-1.7B
+      ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-4B
+
+      # ---- Offloading ----
       #
-      # 1.7B rather than 4B: api mode keeps every model resident where the
-      # Gradio entry point offloaded between stages, so a 4B DiT and a 4B LM no
-      # longer fit in 23.6 GB together. Symptom is a 500 from /v1/init saying
-      # "CUDA out of memory" for the LM while the DiT loads fine, and then
-      # this in the log, which degrades silently rather than failing:
-      #   vLLM disabled due to insufficient free VRAM ... falling back to PyTorch
+      # Required, and NOT the default on this box. startup_model_init.py only
+      # auto-enables offload when the card has less than
+      # VRAM_AUTO_OFFLOAD_THRESHOLD_GB = 20.0; a 3090 reports 23.6 GB, so the
+      # server assumes there is room and keeps everything resident. That is
+      # fine for one model and wrong for two: a 4B DiT plus a 4B LM leaves
+      # ~1.9 GB, and a 4-minute render needs ~4.5 GB, so it fails its VRAM
+      # pre-flight. Setting this explicitly overrides the auto decision.
       #
-      # Note /v1/init does NOT free the previous weights. After a few model
-      # swaps VRAM is exhausted and even a 4-minute render fails its pre-flight.
-      # Restart the container rather than trying to swap your way out.
-      # ACESTEP_LM_MODEL_PATH: acestep-5Hz-lm-4B
+      # Cost is about 1s per generation in CPU<->GPU transfers
+      # (offload_time_cost in the logs), against 30-40s for a 4-minute render.
+      #
+      # ACESTEP_OFFLOAD_DIT_TO_CPU is deliberately left off: the DiT is ~9 GB
+      # and moving it every stage would be far more expensive than the VAE and
+      # text encoder.
+      ACESTEP_OFFLOAD_TO_CPU: "true"
+      ACESTEP_LM_OFFLOAD_TO_CPU: "true"
+
+      # ---- DCW correction ----
+      #
+      # Reads a LOCAL PATCH to acestep/inference.py — upstream hardcodes this
+      # on and exposes no way to disable it, not even in the REST API.
+      #
+      # DCW rewrites the latent once per sampler step. xl-sft on this box gets
+      # *worse* as inference_steps rises — best at 4, chaotic by 10 — which is
+      # backwards for a flow model and looks like a per-step perturbation
+      # accumulating. Guidance was eliminated as the cause by a run at
+      # guidance_scale=1.0, where the CFG branch is never entered at all and
+      # the divergence persisted. DCW is the only other per-step term.
+      #
+      # Set to "false" to test that. "true" keeps upstream behaviour.
+      ACESTEP_DCW_ENABLED: "false"
+
       ACESTEP_LM_BACKEND: vllm
       ACESTEP_DEVICE: ${ACESTEP_DEVICE:-auto}
       ACESTEP_NO_INIT: ${ACESTEP_NO_INIT:-false}
@@ -123,14 +146,11 @@ services:
 
     # ---- Ports ----
     #
-    # Both are published so switching ACESTEP_MODE needs no port edit. Only the
-    # one matching the active mode has anything listening behind it; publishing
-    # the other is harmless.
-    #
-    # 8020 was probed free on ai.lemon.com. 8001 is SillyTavern and 7860 is the
-    # Gradio UI, so neither is available for this.
+    # 8020 was probed free on ai.lemon.com. 8001 is SillyTavern and 7860 was the
+    # Gradio UI, so neither is available for this. Must match ACESTEP_API_PORT
+    # above and slopbc.toml's [acestep] base_url.
     ports:
-      - "0.0.0.0:${ACESTEP_API_PORT:-8020}:${ACESTEP_API_PORT:-8020}"
+      - "0.0.0.0:8020:8020"
 
     # ---- Persistent volumes ----
     volumes:
@@ -160,7 +180,7 @@ services:
 
     # /health is the only endpoint that answers without a token.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:${ACESTEP_API_PORT:-8020}/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8020/health >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 10m

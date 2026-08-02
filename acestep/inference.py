@@ -145,7 +145,23 @@ class GenerationParams:
     # DCW — Differential Correction in Wavelet domain (CVPR 2026, arXiv:2604.16044).
     # On by default to mitigate SNR-t bias via per-band wavelet-domain correction
     # at each sampler step.  Uses `pytorch_wavelets` + `PyWavelets` (managed deps).
-    dcw_enabled: bool = True
+    # LOCAL CHANGE: made switchable via ACESTEP_DCW_ENABLED so it can be turned
+    # off without a source edit. Upstream hardcodes True here.
+    #
+    # Why: DCW modifies the latent once per sampler step, and it is not exposed
+    # anywhere in the REST API, so a client cannot disable it. On this
+    # deployment xl-sft gets worse as inference_steps rises — best at 4 steps,
+    # chaotic by 10 — which is backwards for a flow model and is the signature
+    # of a per-step perturbation accumulating rather than a trajectory
+    # converging. Classifier-free guidance was ruled out as the cause by a run
+    # at guidance_scale=1.0, where the sampler never enters the CFG branch at
+    # all and the divergence persisted. DCW is the only other per-step term.
+    #
+    # xl-turbo is unaffected because it hard-clamps to 8 steps, so DCW can
+    # never be applied more than 8 times there.
+    dcw_enabled: bool = os.getenv("ACESTEP_DCW_ENABLED", "true").strip().lower() in {
+        "1", "true", "yes", "y", "on",
+    }
     # Defaults tuned by grid search on the pure-DiT path; "double" with
     # low_scaler=0.05 and high_scaler=0.02 was the top configuration.  In
     # LLM-think mode DCW's gain is small and these defaults still sit near
