@@ -7,8 +7,12 @@
 #   sudo mkdir -p /srv/acestep/gradio_outputs
 #   docker compose up --build -d
 #   docker compose logs -f acestep
-#   Open http://localhost:7860 for the Web UI
-#   curl http://localhost:7860/health
+#   curl http://localhost:8020/health
+#
+# Runs in API mode by default, which has no Web UI. For the Gradio UI:
+#   ACESTEP_MODE=gradio ACESTEP_EXTRA_ARGS="--enable-api --api-key qwe123" \
+#     docker compose up -d
+#   Open http://localhost:7860
 #
 # Persistent data is intentionally kept outside the repository under
 # /srv/acestep. Override ACESTEP_DATA_ROOT if a different host path is needed.
@@ -35,14 +39,43 @@ services:
     # ---- Environment ----
     environment:
       NVIDIA_VISIBLE_DEVICES: "0"
-      ACESTEP_MODE: gradio
+
+      # api, not gradio. These are two different entry points — see
+      # docker-entrypoint.sh: `api` runs acestep.api_server, `gradio` runs
+      # acestep.acestep_v15_pipeline with the REST routes bolted on.
+      #
+      # We used the Gradio one for months because the upstream README says the
+      # API server is on 8001, and on this host 8001 is SillyTavern, which
+      # answers convincingly enough that we concluded the README was wrong. It
+      # was not. Hence the non-default port below.
+      #
+      # What the real API server adds: a job queue with workers, POST
+      # /v1/reinitialize and /v1/init to swap models without restarting the
+      # container, /v1/models and /v1/model_inventory to ask what is loaded,
+      # and CONFIG_PATH2/3 to hold several DiTs at once and pick per request.
+      #
+      # What it costs: there is no Web UI in this mode. Set ACESTEP_MODE=gradio
+      # to get it back.
+      ACESTEP_MODE: ${ACESTEP_MODE:-api}
+
+      # 8020 because 7860 is the Gradio UI and 8001 is SillyTavern. Any port
+      # chosen here must be free on the host, and must match slopbc.toml's
+      # [acestep] base_url.
+      ACESTEP_API_HOST: 0.0.0.0
+      ACESTEP_API_PORT: ${ACESTEP_API_PORT:-8020}
+
       GRADIO_SERVER_NAME: 0.0.0.0
       GRADIO_PORT: 7860
-      # Personal LAN API authentication.
+
+      # Personal LAN API authentication. In api mode this is read straight from
+      # the environment by acestep/api/server_cli.py; it needs no CLI flag.
       ACESTEP_API_KEY: qwe123
-      # Mount the REST routes into the same Gradio process so the large models
-      # are loaded only once. The Web UI itself intentionally has no login.
-      ACESTEP_EXTRA_ARGS: --enable-api --api-key qwe123
+
+      # Deliberately empty. The entrypoint passes ACESTEP_EXTRA_ARGS to BOTH
+      # modes, and `--enable-api` is a Gradio-only flag: api_server's argparse
+      # rejects it and the container dies at startup. Only set this when
+      # ACESTEP_MODE is gradio.
+      ACESTEP_EXTRA_ARGS: ""
       ACESTEP_DOWNLOAD_SOURCE: ${ACESTEP_DOWNLOAD_SOURCE:-auto}
       # Maximum-quality configuration for a 24 GB RTX 3090 (slower) — ACTIVE.
       #
@@ -76,8 +109,15 @@ services:
       TOKENIZERS_PARALLELISM: "false"
 
     # ---- Ports ----
+    #
+    # Both are published so switching ACESTEP_MODE needs no port edit. Only the
+    # one matching the active mode has anything listening behind it; publishing
+    # the other is harmless.
+    #
+    # 8020 was probed free on ai.lemon.com. 8001 is SillyTavern and 7860 is the
+    # Gradio UI, so neither is available for this.
     ports:
-      # The Web UI and REST routes share one Gradio/FastAPI process.
+      - "0.0.0.0:${ACESTEP_API_PORT:-8020}:${ACESTEP_API_PORT:-8020}"
       - "0.0.0.0:${GRADIO_PORT:-7860}:7860"
 
     # ---- Persistent volumes ----
@@ -106,8 +146,10 @@ services:
 
     restart: unless-stopped
 
+    # Tries whichever port the active mode is serving. /health is the only
+    # endpoint that answers without a token in either mode.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:7860/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${ACESTEP_API_PORT:-8020}/health >/dev/null || curl -fsS http://localhost:7860/health >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 10m
