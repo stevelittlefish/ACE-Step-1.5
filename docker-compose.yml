@@ -137,7 +137,24 @@ services:
       # ACESTEP_DCW_ENABLED: "false"
       ACESTEP_DCW_ENABLED: "true"
 
-      ACESTEP_LM_BACKEND: vllm
+      # ---- LM backend ----
+      #
+      # pt (PyTorch/transformers), NOT vllm. This is what makes GPU 0 shareable
+      # with the Stable Audio 3 and stem-separation services.
+      #
+      # vllm loads the planner once and holds VRAM persistently (greedy KV-cache
+      # reservation by design), so with the DiT resident it owns the rest of the
+      # card and leaves nothing for a co-tenant. The pt backend instead honours
+      # ACESTEP_LM_OFFLOAD_TO_CPU below: the LM lives in CPU RAM and is moved onto
+      # the GPU only during the planning step, then offloaded back (see the
+      # load/offload context manager in acestep/llm_inference.py, which logs
+      # "Offloaded LLM to CPU in …s"). nano-vllm/mlx do NOT offload.
+      #
+      # Same acestep-5Hz-lm weights, so planning QUALITY is unchanged; the cost
+      # is per-song LM latency (no paged attention + an ~8 GB CPU<->GPU shuffle).
+      # Acceptable for one short plan per track. Valid values: vllm, pt, mlx
+      # (VALID_LM_BACKENDS in acestep/gpu_config.py).
+      ACESTEP_LM_BACKEND: pt
       ACESTEP_DEVICE: ${ACESTEP_DEVICE:-auto}
       ACESTEP_NO_INIT: ${ACESTEP_NO_INIT:-false}
       ACESTEP_QUEUE_MAXSIZE: ${ACESTEP_QUEUE_MAXSIZE:-20}
