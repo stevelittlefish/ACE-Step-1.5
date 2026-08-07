@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from acestep.api.job_result_payload import (
+    _extract_audio_codes,
     build_generation_success_response,
     normalize_metas,
 )
@@ -36,7 +37,7 @@ class JobResultPayloadTests(unittest.TestCase):
 
         result = SimpleNamespace(
             audios=[
-                {"path": "a.wav", "params": {"seed": 11}},
+                {"path": "a.wav", "params": {"seed": 11, "audio_codes": "<|audio_code_1|><|audio_code_2|>"}},
                 {"path": "b.wav", "params": {"seed": 22}},
             ],
             extra_outputs={"lm_metadata": {"genres": "rock"}, "time_costs": {"total": 1.2}},
@@ -71,6 +72,7 @@ class JobResultPayloadTests(unittest.TestCase):
         self.assertEqual("/v1/audio?path=a.wav", payload["first_audio_path"])
         self.assertEqual("/v1/audio?path=b.wav", payload["second_audio_path"])
         self.assertEqual("11,22", payload["seed_value"])
+        self.assertEqual("<|audio_code_1|><|audio_code_2|>", payload["audio_codes"])
         self.assertEqual("orig prompt", payload["metas"]["prompt"])
         self.assertEqual("orig lyrics", payload["metas"]["lyrics"])
         self.assertEqual(120, payload["bpm"])
@@ -80,6 +82,22 @@ class JobResultPayloadTests(unittest.TestCase):
         self.assertEqual("lm", payload["lm_model"])
         self.assertEqual("dit", payload["dit_model"])
         build_generation_info.assert_called_once()
+
+    def test_extract_audio_codes_first_audio_only_and_empty_default(self) -> None:
+        """Codes come off the first audio; a missing/empty field is "" not a crash."""
+
+        self.assertEqual(
+            "<|audio_code_9|>",
+            _extract_audio_codes(
+                [
+                    {"params": {"audio_codes": "<|audio_code_9|>"}},
+                    {"params": {"audio_codes": "<|audio_code_other|>"}},
+                ]
+            ),
+        )
+        # No codes (LM not used / user-provided) and no audios at all.
+        self.assertEqual("", _extract_audio_codes([{"params": {"seed": 1}}]))
+        self.assertEqual("", _extract_audio_codes([]))
 
 
 if __name__ == "__main__":

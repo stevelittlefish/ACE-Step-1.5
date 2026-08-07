@@ -51,6 +51,21 @@ def _extract_seed_value(audios: list[dict[str, Any]]) -> str:
     return ",".join(seed_values) if seed_values else ""
 
 
+def _extract_audio_codes(audios: list[dict[str, Any]]) -> str:
+    """Surface the LM-planned audio semantic codes from the first audio.
+
+    inference.py stashes the ``<|audio_code_N|>`` string on each audio's
+    ``params`` (only when the LM generated it), but the standard success
+    response never carried it out — so a normal generation threw away the
+    blueprint it just made. Feeding this string back as ``audio_code_string``
+    pins the composition while DiT settings vary. First audio only, since
+    batch_size=1 is the determinism recipe's rule.
+    """
+    if not audios:
+        return ""
+    return audios[0].get("params", {}).get("audio_codes", "") or ""
+
+
 def build_generation_success_response(
     *,
     result: Any,
@@ -101,6 +116,7 @@ def build_generation_success_response(
     metas_out["lyrics"] = original_lyrics
 
     seed_value = _extract_seed_value(audios)
+    audio_codes = _extract_audio_codes(audios)
     time_costs = result.extra_outputs.get("time_costs", {})
     generation_info = build_generation_info(
         lm_metadata=lm_metadata,
@@ -118,6 +134,7 @@ def build_generation_success_response(
         "generation_info": generation_info,
         "status_message": result.status_message,
         "seed_value": seed_value,
+        "audio_codes": audio_codes,
         "prompt": params.caption or "",
         "lyrics": params.lyrics or "",
         "metas": metas_out,
