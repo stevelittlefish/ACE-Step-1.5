@@ -126,6 +126,7 @@ class LocalCacheUpdatesTests(unittest.TestCase):
             },
             "generation_info": "info",
             "seed_value": "42",
+            "audio_codes": "<|audio_code_1|><|audio_code_2|>",
             "lm_model": "lm-model",
             "dit_model": "dit-model",
         }
@@ -148,6 +149,11 @@ class LocalCacheUpdatesTests(unittest.TestCase):
         self.assertEqual("original prompt", payload[0]["metas"]["prompt"])
         self.assertEqual(1.0, payload[0]["progress"])
         self.assertEqual("succeeded", payload[0]["stage"])
+        # The /query_result reshaper drops any field it does not explicitly copy;
+        # the LM-planned blueprint must survive it or the client never sees it.
+        self.assertEqual(
+            "<|audio_code_1|><|audio_code_2|>", payload[0]["audio_codes"]
+        )
 
     def test_update_local_cache_writes_failed_payload(self):
         """Failed status should emit failed stage with zero progress."""

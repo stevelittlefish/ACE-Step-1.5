@@ -72,6 +72,7 @@ def update_local_cache(
             }
             generation_info = result.get("generation_info", "")
             seed_value = result.get("seed_value", "")
+            audio_codes = result.get("audio_codes", "")
             lm_model = result.get("lm_model", "")
             dit_model = result.get("dit_model", "")
 
@@ -88,6 +89,7 @@ def update_local_cache(
                         "metas": metas,
                         "generation_info": generation_info,
                         "seed_value": seed_value,
+                        "audio_codes": audio_codes,
                         "lm_model": lm_model,
                         "dit_model": dit_model,
                         "progress": 1.0,
@@ -107,6 +109,7 @@ def update_local_cache(
                     "metas": metas,
                     "generation_info": generation_info,
                     "seed_value": seed_value,
+                    "audio_codes": audio_codes,
                     "lm_model": lm_model,
                     "dit_model": dit_model,
                     "progress": 1.0,
